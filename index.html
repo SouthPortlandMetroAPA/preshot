@@ -316,14 +316,36 @@
     font-size: 0.65rem; font-weight: 700;
     color: var(--muted);
     text-transform: uppercase; letter-spacing: 0.05em;
-    padding: 2px 6px;
+    padding: 3px 8px;
     border-radius: var(--pill);
     background: #f3f4f6;
+    border: 1px solid transparent;
     flex: 0 0 auto;
     opacity: 0;
-    transition: opacity 0.15s;
+    font-family: inherit;
+    transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
   }
   .item:hover .item-tag { opacity: 1; }
+  /* When the tag is a <button>, signal clickability on hover. */
+  button.item-tag {
+    cursor: pointer;
+  }
+  button.item-tag:hover {
+    background: rgba(0,49,161,0.1);
+    color: var(--spm-accent);
+    border-color: rgba(0,49,161,0.3);
+  }
+  button.item-tag .promote-arrow {
+    display: inline-block;
+    width: 0;
+    overflow: hidden;
+    transition: width 0.18s ease;
+    vertical-align: baseline;
+  }
+  button.item-tag:hover .promote-arrow,
+  button.item-tag:focus-visible .promote-arrow {
+    width: 7em;  /* enough to fit "→ template" inline on hover */
+  }
 
   .item-actions {
     flex: 0 0 auto;
@@ -860,8 +882,15 @@ function paneHtml(inst, kind, title) {
 }
 function itemHtml(instanceId, kind, item, completionSet) {
   const isDone = completionSet.has(item._origin + ':' + item.id);
-  const tagText = item._origin === 'type' ? 'template' : 'this trip';
   const cls = 'item ' + (item._origin === 'type' ? 'tmpl' : 'inst') + (isDone ? ' done' : '');
+  // Type items: static "template" badge.
+  // Instance items: clickable button — promotes to template on click.
+  const tagHtml = item._origin === 'type'
+    ? '<span class="item-tag">template</span>'
+    : '<button class="item-tag" type="button" title="Move to template (will appear on every trip of this type)" '
+      + 'onclick="event.stopPropagation();promoteToTemplate(' + instanceId + ',' + item.id + ')">'
+      + 'this trip<span class="promote-arrow"> → template</span>'
+      + '</button>';
   return ''
     + '<div class="' + cls + '" '
     +   'data-item-id="' + item.id + '" '
@@ -884,7 +913,7 @@ function itemHtml(instanceId, kind, item, completionSet) {
     +     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}else if(event.key===\'Escape\'){cancelEditLabel(this);}">'
     +     esc(item.label)
     +   '</span>'
-    +   '<span class="item-tag">' + tagText + '</span>'
+    +   tagHtml
     +   '<div class="item-actions">'
     +     '<button class="btn-icon danger" title="Delete" onclick="deleteItem(\'' + item._origin + '\',' + item.id + ',' + instanceId + ',\'' + kind + '\')">'
     +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
@@ -948,6 +977,105 @@ async function toggleCompletion(instanceId, origin, itemId, checked) {
     }
   } catch (e) {
     showToast('Save failed: ' + e.message);
+  }
+}
+
+/* Move an instance one-off item up into its trip's type so it becomes
+ * part of the template — i.e. appears on every trip of this type from
+ * here on out, and on every existing trip too. Preserves THIS trip's
+ * checked state. Toast lets the user undo within 5 seconds. */
+async function promoteToTemplate(instanceId, instanceItemId) {
+  const inst = _instances.find(i => i.id === instanceId);
+  if (!inst) return;
+  const items = (_instanceItemsByInstance.get(instanceId) || []);
+  const item = items.find(x => x.id === instanceItemId);
+  if (!item) return;
+
+  const typeItems = (_typeItemsByType.get(inst.type_id) || []).filter(x => x.list_kind === item.list_kind);
+  const maxPos = typeItems.reduce((m, i) => Math.max(m, i.position), 0);
+
+  const compSet = _completionsByInstance.get(instanceId) || new Set();
+  const wasDone = compSet.has('instance:' + instanceItemId);
+
+  let newTypeItem = null;
+  try {
+    // 1. Create the new type_item at the end of its list.
+    const created = await sb('POST', 'type_items', {
+      type_id: inst.type_id,
+      list_kind: item.list_kind,
+      position: maxPos + 1,
+      label: item.label
+    });
+    newTypeItem = Array.isArray(created) ? created[0] : created;
+
+    // 2. If this trip had it checked, copy the completion forward to the
+    //    new type-anchored row so the visual stays consistent.
+    if (wasDone) {
+      await sb('POST', 'completions', {
+        instance_id: instanceId,
+        source_kind: 'type',
+        source_item_id: newTypeItem.id
+      }, { Prefer: 'resolution=merge-duplicates,return=minimal' });
+    }
+
+    // 3. Drop the original instance_item (cascade kills its old completion).
+    await sb('DELETE', 'instance_items?id=eq.' + instanceItemId);
+
+    // 4. Local-state mirror.
+    let typeG = _typeItemsByType.get(inst.type_id) || [];
+    typeG.push(newTypeItem);
+    _typeItemsByType.set(inst.type_id, typeG);
+
+    let instG = _instanceItemsByInstance.get(instanceId) || [];
+    _instanceItemsByInstance.set(instanceId, instG.filter(x => x.id !== instanceItemId));
+
+    if (wasDone) {
+      const s = _completionsByInstance.get(instanceId) || new Set();
+      s.delete('instance:' + instanceItemId);
+      s.add('type:' + newTypeItem.id);
+      _completionsByInstance.set(instanceId, s);
+    }
+
+    rerenderActive();
+
+    armUndo({
+      label: 'Moved "' + (item.label.length > 30 ? item.label.substring(0,30) + '…' : item.label) + '" to template',
+      restore: async () => {
+        try {
+          // Recreate as instance_item (new id) at original position.
+          const recreated = await sb('POST', 'instance_items', {
+            instance_id: instanceId,
+            list_kind: item.list_kind,
+            position: item.position,
+            label: item.label
+          });
+          const r = Array.isArray(recreated) ? recreated[0] : recreated;
+
+          if (wasDone) {
+            await sb('POST', 'completions', {
+              instance_id: instanceId,
+              source_kind: 'instance',
+              source_item_id: r.id
+            }, { Prefer: 'resolution=merge-duplicates,return=minimal' });
+          }
+          await sb('DELETE', 'type_items?id=eq.' + newTypeItem.id);
+
+          // Local mirror — reverse the change above.
+          let g = _instanceItemsByInstance.get(instanceId) || [];
+          g.push(r); _instanceItemsByInstance.set(instanceId, g);
+          let tg = _typeItemsByType.get(inst.type_id) || [];
+          _typeItemsByType.set(inst.type_id, tg.filter(x => x.id !== newTypeItem.id));
+          const s = _completionsByInstance.get(instanceId) || new Set();
+          s.delete('type:' + newTypeItem.id);
+          if (wasDone) s.add('instance:' + r.id);
+          _completionsByInstance.set(instanceId, s);
+
+          rerenderActive();
+        } catch (e) { showToast('Undo failed: ' + e.message); }
+      }
+    });
+  } catch (e) {
+    showToast('Promote failed: ' + e.message);
   }
 }
 
