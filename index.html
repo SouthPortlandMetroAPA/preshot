@@ -1,0 +1,1820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>PreShot</title>
+<meta name="description" content="Tournament-prep companion — packing &amp; to-do lists for trips">
+<style>
+  :root {
+    --spm-primary: #ea002a;
+    --spm-accent:  #0031a1;
+    --bg:          #f3f3f3;
+    --card:        #ffffff;
+    --text:        #1a1a1a;
+    --muted:       #6b7280;
+    --border:      #e5e7eb;
+    --border-strong: #d1d5db;
+    --success:     #16a34a;
+    --warn:        #f59e0b;
+    --danger:      #dc2626;
+    --tmpl:        #9ca3af;
+    --inst:        #0031a1;
+    --flash:       #fef3c7;
+    --radius:      14px;
+    --pill:        999px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh;
+  }
+  body { padding-bottom: 40px; }
+
+  /* ── Header ───────────────────────────────────────────────────── */
+  .header {
+    background: linear-gradient(135deg, var(--spm-primary), var(--spm-accent));
+    color: #fff;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    position: sticky; top: 0; z-index: 50;
+  }
+  .header-inner {
+    max-width: 1200px; margin: 0 auto;
+    display: flex; align-items: center; gap: 14px;
+  }
+  .header h1 {
+    font-size: 1.4rem; font-weight: 900; letter-spacing: -0.01em;
+    cursor: pointer; user-select: none;
+  }
+  .header h1 .brand-dot {
+    display: inline-block; width: 9px; height: 9px;
+    border-radius: 50%; background: #fff;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.25);
+    margin-right: 8px; vertical-align: middle;
+  }
+  .header-spacer { flex: 1; }
+  .header-link {
+    color: #fff; text-decoration: none;
+    background: rgba(255,255,255,0.15);
+    border: 1.5px solid rgba(255,255,255,0.45);
+    padding: 6px 14px; border-radius: var(--pill);
+    font-size: 0.82rem; font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .header-link:hover { background: rgba(255,255,255,0.25); border-color: rgba(255,255,255,0.7); }
+
+  /* ── Containers ───────────────────────────────────────────────── */
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 16px; }
+  .narrow { max-width: 720px; margin: 0 auto; padding: 16px; }
+
+  /* ── Crumb / back link ────────────────────────────────────────── */
+  .crumb {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 0.85rem; color: var(--muted); font-weight: 600;
+    text-decoration: none;
+    margin-bottom: 14px;
+    cursor: pointer;
+  }
+  .crumb:hover { color: var(--text); }
+
+  /* ── Cards (dashboard) ────────────────────────────────────────── */
+  .trip-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px 18px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+    cursor: pointer;
+    transition: box-shadow 0.18s ease, transform 0.05s;
+  }
+  .trip-card:hover { box-shadow: 0 4px 14px rgba(0,0,0,0.08); }
+  .trip-card:active { transform: scale(0.997); }
+  .trip-card.next { border-color: var(--spm-accent); border-width: 2px; }
+  .trip-card .row1 {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+  }
+  .trip-name { font-size: 1.1rem; font-weight: 800; color: var(--text); }
+  .trip-meta { font-size: 0.85rem; color: var(--muted); font-weight: 600; }
+  .trip-countdown {
+    margin-left: auto;
+    background: var(--spm-accent); color: #fff;
+    padding: 3px 10px; border-radius: var(--pill);
+    font-size: 0.72rem; font-weight: 800; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .trip-countdown.past { background: var(--muted); }
+  .trip-countdown.today { background: var(--success); }
+  .trip-progress {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    margin-top: 10px;
+  }
+  .progress-item {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 0.78rem; color: var(--muted); font-weight: 600;
+  }
+  .progress-item .label { flex: 0 0 auto; min-width: 60px; }
+  .progress-bar {
+    flex: 1; height: 6px; border-radius: 3px; background: var(--border);
+    overflow: hidden;
+  }
+  .progress-bar .fill { height: 100%; background: var(--spm-accent); transition: width 0.25s; }
+  .progress-bar .fill.done { background: var(--success); }
+  .progress-pct { flex: 0 0 auto; min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* ── Empty state ──────────────────────────────────────────────── */
+  .empty {
+    text-align: center; padding: 48px 20px;
+    color: var(--muted);
+    background: var(--card); border-radius: var(--radius);
+    border: 1px dashed var(--border-strong);
+  }
+  .empty .empty-emoji { font-size: 2.6rem; display: block; margin-bottom: 10px; }
+  .empty .empty-title { font-size: 1.05rem; font-weight: 800; color: var(--text); margin-bottom: 6px; }
+  .empty .empty-msg { font-size: 0.9rem; line-height: 1.5; max-width: 380px; margin: 0 auto 18px; }
+
+  /* ── Buttons ──────────────────────────────────────────────────── */
+  .btn {
+    padding: 10px 18px;
+    border-radius: var(--pill);
+    font-size: 0.86rem; font-weight: 700;
+    border: 0; cursor: pointer;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .btn-primary { background: var(--spm-accent); color: #fff; }
+  .btn-primary:hover:not(:disabled) { background: #0046cc; }
+  .btn-primary:disabled { background: #93c5fd; cursor: not-allowed; }
+  .btn-outline { background: #fff; border: 1.5px solid var(--border-strong); color: var(--text); }
+  .btn-outline:hover:not(:disabled) { background: #f5f5f5; border-color: var(--muted); }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-danger:hover { opacity: 0.9; }
+  .btn-sm { padding: 6px 12px; font-size: 0.78rem; }
+  .btn-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 0; background: transparent; cursor: pointer;
+    color: var(--muted);
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-icon:hover { background: #f0f0f0; color: var(--text); }
+  .btn-icon.danger:hover { background: #fee2e2; color: var(--danger); }
+
+  /* Section title */
+  h2.section {
+    font-size: 0.78rem; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 10px;
+  }
+
+  /* ── Forms ────────────────────────────────────────────────────── */
+  .form-grid { display: grid; gap: 12px; }
+  .form-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .form-row > * { flex: 1; min-width: 140px; }
+  label { display: block; font-size: 0.74rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 4px; }
+  input[type="text"], input[type="date"], textarea, select {
+    width: 100%; border: 1.5px solid var(--border-strong); border-radius: 10px;
+    padding: 10px 12px; font-family: inherit; font-size: 0.92rem;
+    background: #fff; color: var(--text);
+  }
+  input:focus, textarea:focus, select:focus { outline: none; border-color: var(--spm-accent); }
+  textarea { resize: vertical; min-height: 60px; }
+
+  /* ── Instance & type editor ───────────────────────────────────── */
+  .instance-header {
+    background: var(--card); border-radius: var(--radius);
+    padding: 16px 20px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+  .instance-name {
+    font-size: 1.35rem; font-weight: 900; color: var(--text);
+    line-height: 1.2;
+  }
+  .instance-meta {
+    font-size: 0.85rem; color: var(--muted); font-weight: 600;
+    margin-top: 4px;
+  }
+  .instance-actions { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+
+  /* ── Tabs (mobile only by default; desktop hides them) ────────── */
+  .tabs {
+    display: flex;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--pill);
+    padding: 4px;
+    margin-bottom: 12px;
+    width: 100%;
+  }
+  .tab {
+    flex: 1;
+    padding: 9px 14px;
+    border: 0; background: transparent;
+    font-family: inherit; font-size: 0.86rem; font-weight: 700;
+    color: var(--muted);
+    border-radius: var(--pill);
+    cursor: pointer;
+  }
+  .tab.active {
+    background: var(--spm-accent); color: #fff;
+  }
+
+  /* ── Two-pane (tablet+) ───────────────────────────────────────── */
+  .panes {
+    display: grid; grid-template-columns: 1fr; gap: 14px;
+  }
+  @media (min-width: 768px) {
+    .tabs { display: none; }
+    .panes { grid-template-columns: 1fr 1fr; }
+    .pane { display: block !important; } /* override tab toggling */
+  }
+
+  /* ── List pane ────────────────────────────────────────────────── */
+  .pane {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+  }
+  .pane-header {
+    padding: 14px 18px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .pane-title {
+    font-size: 0.78rem; font-weight: 800; color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .pane-progress {
+    margin-left: auto;
+    font-size: 0.78rem; color: var(--muted); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+  }
+  .pane-list { padding: 4px 0; }
+  .empty-list {
+    padding: 20px;
+    color: var(--muted); font-size: 0.86rem; text-align: center; line-height: 1.5;
+  }
+
+  /* ── Item row ─────────────────────────────────────────────────── */
+  .item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px 10px 12px;
+    border-bottom: 1px solid var(--border);
+    background: #fff;
+    transition: background 0.6s ease;
+    border-left: 3px solid transparent;
+  }
+  .item:last-child { border-bottom: 0; }
+  .item.tmpl { border-left-color: var(--tmpl); }
+  .item.inst { border-left-color: var(--inst); }
+  .item.flash { background: var(--flash); transition: background 0s; }
+  .item.dragging { opacity: 0.5; }
+  .item.drop-above { box-shadow: inset 0 2px 0 var(--spm-accent); }
+  .item.drop-below { box-shadow: inset 0 -2px 0 var(--spm-accent); }
+
+  .drag-handle {
+    flex: 0 0 auto;
+    width: 22px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    color: #d1d5db; cursor: grab;
+    user-select: none;
+    touch-action: none;
+  }
+  .drag-handle:hover { color: var(--muted); }
+  .drag-handle:active { cursor: grabbing; }
+  .drag-handle svg { width: 14px; height: 14px; pointer-events: none; }
+
+  .item-cb {
+    flex: 0 0 auto;
+    width: 22px; height: 22px;
+    accent-color: var(--spm-accent);
+    cursor: pointer;
+  }
+
+  .item-label {
+    flex: 1;
+    font-size: 0.95rem;
+    line-height: 1.35;
+    color: var(--text);
+    cursor: text;
+    word-break: break-word;
+    padding: 4px 4px;
+    border-radius: 6px;
+    min-height: 26px;
+  }
+  .item-label:hover { background: rgba(0,49,161,0.04); }
+  .item-label[contenteditable="true"]:focus { outline: 2px solid var(--spm-accent); background: #fff; }
+  .item.done .item-label { text-decoration: line-through; color: var(--muted); opacity: 0.55; }
+
+  .item-tag {
+    font-size: 0.65rem; font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    padding: 2px 6px;
+    border-radius: var(--pill);
+    background: #f3f4f6;
+    flex: 0 0 auto;
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .item:hover .item-tag { opacity: 1; }
+
+  .item-actions {
+    flex: 0 0 auto;
+    display: flex; gap: 2px;
+    opacity: 0; transition: opacity 0.15s;
+  }
+  .item:hover .item-actions, .item:focus-within .item-actions {
+    opacity: 1;
+  }
+  @media (max-width: 767px) {
+    .item-actions { opacity: 1; } /* always visible on touch */
+    .item-tag { opacity: 1; }
+  }
+
+  .add-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 16px 14px;
+    border-top: 1px solid var(--border);
+    background: #fafafa;
+  }
+  .add-input {
+    flex: 1;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 0.92rem; font-family: inherit;
+    background: #fff;
+  }
+  .add-input:focus { outline: none; border-color: var(--spm-accent); }
+  .add-btn {
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 0;
+    background: var(--spm-accent);
+    color: #fff;
+    font-size: 0.85rem; font-weight: 700;
+    cursor: pointer;
+  }
+  .add-btn:disabled { background: #93c5fd; cursor: not-allowed; }
+
+  /* ── Types view ───────────────────────────────────────────────── */
+  .type-row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    transition: box-shadow 0.18s ease;
+  }
+  .type-row:hover { box-shadow: 0 3px 10px rgba(0,0,0,0.06); }
+  .type-row .type-name { font-size: 1rem; font-weight: 800; color: var(--text); flex: 1; }
+  .type-row .type-stats { font-size: 0.78rem; color: var(--muted); font-weight: 600; }
+  .type-row .type-actions { display: flex; gap: 4px; }
+
+  /* ── Modal ────────────────────────────────────────────────────── */
+  .modal {
+    position: fixed; inset: 0;
+    background: rgba(10,20,40,0.6);
+    z-index: 200;
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .modal.shown { display: flex; }
+  .modal-box {
+    background: var(--card); border-radius: var(--radius);
+    max-width: 460px; width: 100%;
+    padding: 22px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+  }
+  .modal-title { font-size: 1.1rem; font-weight: 800; margin-bottom: 14px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; flex-wrap: wrap; }
+
+  /* ── Toast (undo + sync messages) ─────────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 24px; left: 50%; transform: translateX(-50%);
+    background: #1f2937; color: #fff;
+    padding: 12px 18px;
+    border-radius: var(--pill);
+    font-size: 0.86rem; font-weight: 600;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    z-index: 150;
+    display: none; align-items: center; gap: 12px;
+    max-width: 90vw;
+  }
+  .toast.shown { display: inline-flex; }
+  .toast-action {
+    background: transparent; border: 0;
+    color: #fbbf24; font-weight: 800; cursor: pointer;
+    font-family: inherit; font-size: 0.86rem;
+    padding: 0 4px;
+  }
+
+  /* ── Update overlay ───────────────────────────────────────────── */
+  .update-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10,20,40,0.72);
+    z-index: 9999;
+    display: none; align-items: center; justify-content: center; padding: 24px;
+  }
+  .update-overlay.shown { display: flex; }
+  .update-box { background: #fff; border-radius: var(--radius); padding: 32px; max-width: 380px; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.4); }
+  .update-spinner {
+    width: 48px; height: 48px; margin: 0 auto 16px;
+    border-radius: 50%;
+    border: 5px solid rgba(0,49,161,0.15);
+    border-top-color: var(--spm-accent);
+    animation: spin 0.85s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .update-title { font-size: 1.1rem; font-weight: 800; color: var(--spm-accent); margin-bottom: 6px; }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<!-- Auto-update overlay -->
+<div class="update-overlay" id="updateOverlay">
+  <div class="update-box">
+    <div class="update-spinner"></div>
+    <div class="update-title">Updating PreShot</div>
+    <div>A new version is being deployed&hellip;</div>
+  </div>
+</div>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-inner">
+    <h1 onclick="goDashboard()"><span class="brand-dot"></span>PreShot</h1>
+    <div class="header-spacer"></div>
+    <button class="header-link" onclick="goTypes()">Manage Types</button>
+  </div>
+</div>
+
+<div id="viewRoot" class="wrap"></div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastMsg"></span>
+  <button class="toast-action hidden" id="toastBtn"></button>
+</div>
+
+<!-- Generic confirm modal -->
+<div class="modal" id="confirmModal">
+  <div class="modal-box">
+    <div class="modal-title" id="confirmTitle">Confirm</div>
+    <div id="confirmMsg" style="font-size:0.92rem;color:var(--muted);line-height:1.5"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeConfirm(false)">Cancel</button>
+      <button class="btn btn-danger" id="confirmOkBtn" onclick="closeConfirm(true)">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Cache-bust version.js so a deployed bump isn't shadowed by browser cache.
+// document.write is safe here — we're still in initial parsing.
+document.write('<script src="version.js?_=' + Date.now() + '"><\/script>');
+</script>
+<script>
+/* ════════════════════════════════════════════════════════════════════════
+   PreShot — tournament-prep companion
+   ════════════════════════════════════════════════════════════════════════ */
+const APP_NAME = 'PreShot';
+const SB_URL  = 'https://dqzbekoaysgaiqljueac.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxemJla29heXNnYWlxbGp1ZWFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNzA5NzgsImV4cCI6MjA5MDc0Njk3OH0.cCdGxZ4zEFzU_r6lWSDeoNWG67Q4MSYCAtpds035dfU';
+const SCHEMA = 'preshot';
+
+const HEADERS_READ = {
+  apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON,
+  'Accept-Profile': SCHEMA
+};
+const HEADERS_WRITE = {
+  apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON,
+  'Content-Type': 'application/json',
+  'Accept-Profile': SCHEMA, 'Content-Profile': SCHEMA,
+  Prefer: 'return=representation'
+};
+const HEADERS_APA = {
+  apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON,
+  'Accept-Profile': 'apa_core'
+};
+
+/* ════════════════════════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════════════════════════ */
+let _types = [];
+let _instances = [];
+let _typeItemsByType = new Map();   // type_id -> [{...}]
+let _instanceItemsByInstance = new Map();  // instance_id -> [{...}]
+let _completionsByInstance = new Map();    // instance_id -> Set("kind:itemId")
+let _versionMismatch = false;
+let _syncTimer = null;
+let _activeView = null;       // 'dashboard' | 'instance' | 'types' | 'type-edit' | 'new-instance' | 'new-type'
+let _activeInstanceSlug = null;
+let _activeTypeId = null;
+let _activeMobileTab = 'packing';   // mobile pane toggle
+let _undoState = null;        // { kind, item, fn }
+let _undoTimer = null;
+
+/* ════════════════════════════════════════════════════════════════════════
+   UTIL
+   ════════════════════════════════════════════════════════════════════════ */
+function esc(s) {
+  return String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function slugify(s) {
+  return String(s || '').toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 64);
+}
+function todayISO() { return new Date().toISOString().substring(0, 10); }
+
+function fmtDateRange(s, e) {
+  if (!s) return '';
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const [sy, sm, sd] = s.split('-').map(Number);
+  if (!e) return months[sm-1] + ' ' + sd + ', ' + sy;
+  const [ey, em, ed] = e.split('-').map(Number);
+  if (sy === ey && sm === em && sd === ed) return months[sm-1] + ' ' + sd + ', ' + sy;
+  if (sy === ey && sm === em) return months[sm-1] + ' ' + sd + '–' + ed + ', ' + sy;
+  if (sy === ey) return months[sm-1] + ' ' + sd + ' – ' + months[em-1] + ' ' + ed + ', ' + sy;
+  return months[sm-1] + ' ' + sd + ', ' + sy + ' – ' + months[em-1] + ' ' + ed + ', ' + ey;
+}
+function daysUntil(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date(todayISO()).getTime();
+  const target = new Date(dateStr).getTime();
+  return Math.round((target - today) / 86400000);
+}
+function countdownLabel(inst) {
+  const today = todayISO();
+  if (inst.end_date && inst.end_date < today) return { text: 'past', cls: 'past' };
+  if (inst.start_date <= today && (!inst.end_date || inst.end_date >= today)) return { text: 'today', cls: 'today' };
+  const d = daysUntil(inst.start_date);
+  if (d == null) return null;
+  if (d === 1) return { text: 'in 1 day', cls: '' };
+  return { text: 'in ' + d + ' days', cls: '' };
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   AUTO-UPDATE
+   ════════════════════════════════════════════════════════════════════════ */
+async function checkVersion() {
+  if (_versionMismatch) return;
+  try {
+    const r = await fetch(SB_URL + '/rest/v1/apps?app_name=eq.' + APP_NAME + '&select=version', {
+      headers: HEADERS_APA
+    });
+    if (!r.ok) return;
+    const d = await r.json();
+    if (!d || !d.length) return;
+    if (d[0].version && d[0].version !== window.APP_VERSION) {
+      _versionMismatch = true;
+      document.getElementById('updateOverlay').classList.add('shown');
+      pollForDeploy(d[0].version);
+    }
+  } catch (_) {}
+}
+function pollForDeploy(target) {
+  setTimeout(async () => {
+    try {
+      const r = await fetch('version.js?_=' + Date.now());
+      if (r.ok) {
+        const text = await r.text();
+        if (text.indexOf("APP_VERSION = '" + target + "'") !== -1) {
+          location.reload(true); return;
+        }
+      }
+    } catch (_) {}
+    pollForDeploy(target);
+  }, 3000);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   SUPABASE
+   ════════════════════════════════════════════════════════════════════════ */
+async function sb(method, path, body, extra) {
+  const opts = { method, headers: method === 'GET' ? { ...HEADERS_READ } : { ...HEADERS_WRITE } };
+  if (extra) opts.headers = { ...opts.headers, ...extra };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(SB_URL + '/rest/v1/' + path, opts);
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error('Supabase ' + r.status + ': ' + txt.substring(0, 300));
+  }
+  if (r.status === 204) return null;
+  const ct = r.headers.get('Content-Type') || '';
+  return ct.includes('json') ? r.json() : r.text();
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DATA LOADERS
+   ════════════════════════════════════════════════════════════════════════ */
+async function loadAll() {
+  const [types, instances, typeItems, instanceItems, completions] = await Promise.all([
+    sb('GET', 'types?archived_at=is.null&order=name.asc'),
+    sb('GET', 'instances?archived_at=is.null&order=start_date.asc'),
+    sb('GET', 'type_items?order=type_id.asc,list_kind.asc,position.asc'),
+    sb('GET', 'instance_items?order=instance_id.asc,list_kind.asc,position.asc'),
+    sb('GET', 'completions?select=instance_id,source_kind,source_item_id')
+  ]);
+  _types = types || [];
+  _instances = instances || [];
+  _typeItemsByType = groupBy(typeItems || [], 'type_id');
+  _instanceItemsByInstance = groupBy(instanceItems || [], 'instance_id');
+  _completionsByInstance = new Map();
+  for (const c of (completions || [])) {
+    let s = _completionsByInstance.get(c.instance_id);
+    if (!s) { s = new Set(); _completionsByInstance.set(c.instance_id, s); }
+    s.add(c.source_kind + ':' + c.source_item_id);
+  }
+}
+function groupBy(arr, key) {
+  const m = new Map();
+  for (const r of arr) {
+    let g = m.get(r[key]);
+    if (!g) { g = []; m.set(r[key], g); }
+    g.push(r);
+  }
+  return m;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ROUTING
+   ════════════════════════════════════════════════════════════════════════ */
+function parseRoute() {
+  const p = new URLSearchParams(location.search);
+  if (p.get('instance')) return { view: 'instance', slug: p.get('instance') };
+  if (p.get('type'))     return { view: 'type-edit', typeId: parseInt(p.get('type'), 10) };
+  if (p.has('types'))    return { view: 'types' };
+  if (p.has('new-instance')) return { view: 'new-instance' };
+  if (p.has('new-type'))     return { view: 'new-type' };
+  return { view: 'dashboard' };
+}
+function setRoute(state) {
+  const url = new URL(location.href);
+  // wipe old keys
+  ['instance','type','types','new-instance','new-type'].forEach(k => url.searchParams.delete(k));
+  if (state.view === 'instance' && state.slug) url.searchParams.set('instance', state.slug);
+  else if (state.view === 'type-edit' && state.typeId) url.searchParams.set('type', String(state.typeId));
+  else if (state.view === 'types') url.searchParams.set('types', '');
+  else if (state.view === 'new-instance') url.searchParams.set('new-instance', '');
+  else if (state.view === 'new-type')     url.searchParams.set('new-type', '');
+  history.pushState(null, '', url);
+}
+window.addEventListener('popstate', () => render());
+function goDashboard() { setRoute({ view: 'dashboard' }); render(); }
+function goTypes()     { setRoute({ view: 'types' });     render(); }
+function goInstance(slug) { setRoute({ view: 'instance', slug }); render(); }
+function goTypeEdit(id)   { setRoute({ view: 'type-edit', typeId: id }); render(); }
+function goNewInstance()  { setRoute({ view: 'new-instance' }); render(); }
+function goNewType()      { setRoute({ view: 'new-type' }); render(); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   RENDER ENTRY POINT
+   ════════════════════════════════════════════════════════════════════════ */
+async function render() {
+  const route = parseRoute();
+  _activeView = route.view;
+  _activeInstanceSlug = route.slug || null;
+  _activeTypeId = route.typeId || null;
+
+  const root = document.getElementById('viewRoot');
+  if (route.view === 'dashboard')        return renderDashboard(root);
+  if (route.view === 'instance')         return renderInstance(root, route.slug);
+  if (route.view === 'types')            return renderTypes(root);
+  if (route.view === 'type-edit')        return renderTypeEdit(root, route.typeId);
+  if (route.view === 'new-instance')     return renderNewInstance(root);
+  if (route.view === 'new-type')         return renderNewType(root);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   COMPLETION / PROGRESS HELPERS
+   ════════════════════════════════════════════════════════════════════════ */
+function instanceItemsForList(instance, listKind) {
+  const tItems = (_typeItemsByType.get(instance.type_id) || []).filter(i => i.list_kind === listKind);
+  const iItems = (_instanceItemsByInstance.get(instance.id) || []).filter(i => i.list_kind === listKind);
+  // Type items first (in their position order), then instance one-offs (in their position order).
+  return [
+    ...tItems.map(i => ({ ...i, _origin: 'type' })),
+    ...iItems.map(i => ({ ...i, _origin: 'instance' }))
+  ];
+}
+function progressFor(instance, listKind) {
+  const items = instanceItemsForList(instance, listKind);
+  const set = _completionsByInstance.get(instance.id) || new Set();
+  let done = 0;
+  for (const i of items) if (set.has(i._origin + ':' + i.id)) done++;
+  return { total: items.length, done };
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DASHBOARD
+   ════════════════════════════════════════════════════════════════════════ */
+function renderDashboard(root) {
+  document.title = 'PreShot';
+  root.className = 'narrow';
+  if (!_instances.length) {
+    root.innerHTML = ''
+      + '<h2 class="section">Trips</h2>'
+      + '<div class="empty">'
+      + '<span class="empty-emoji">\u{1F9F3}</span>'
+      + '<div class="empty-title">No trips yet</div>'
+      + '<div class="empty-msg">Create a trip type first (like “Tri-Annuals”), then create a trip from it.</div>'
+      + '<button class="btn btn-primary" onclick="goNewType()">+ New type</button> '
+      + '<button class="btn btn-outline" style="margin-left:6px" onclick="goTypes()">Manage types</button>'
+      + '</div>';
+    return;
+  }
+  const today = todayISO();
+  const upcoming = _instances.filter(i => !i.end_date || i.end_date >= today);
+  const past = _instances.filter(i => i.end_date && i.end_date < today);
+
+  let html = '<h2 class="section">Trips</h2>';
+  upcoming.forEach((inst, idx) => { html += tripCardHtml(inst, idx === 0); });
+  if (past.length) {
+    html += '<h2 class="section" style="margin-top:24px">Past</h2>';
+    past.forEach(inst => { html += tripCardHtml(inst, false); });
+  }
+  html += '<div style="margin-top:18px;display:flex;gap:8px;flex-wrap:wrap">'
+       + '<button class="btn btn-primary" onclick="goNewInstance()">+ New trip</button>'
+       + '<button class="btn btn-outline" onclick="goTypes()">Manage types</button>'
+       + '</div>';
+  root.innerHTML = html;
+}
+function tripCardHtml(inst, isNext) {
+  const pp = progressFor(inst, 'packing');
+  const tp = progressFor(inst, 'todo');
+  const pPct = pp.total ? Math.round(100 * pp.done / pp.total) : 0;
+  const tPct = tp.total ? Math.round(100 * tp.done / tp.total) : 0;
+  const cd = countdownLabel(inst);
+  const cdHtml = cd ? '<span class="trip-countdown ' + cd.cls + '">' + esc(cd.text) + '</span>' : '';
+  const dates = fmtDateRange(inst.start_date, inst.end_date);
+  return ''
+    + '<div class="trip-card' + (isNext ? ' next' : '') + '" onclick="goInstance(\'' + esc(inst.slug) + '\')">'
+    +   '<div class="row1">'
+    +     '<div class="trip-name">' + esc(inst.name) + '</div>'
+    +     '<div class="trip-meta">' + esc(dates) + '</div>'
+    +     cdHtml
+    +   '</div>'
+    +   '<div class="trip-progress">'
+    +     progressItemHtml('Packing', pp.done, pp.total, pPct)
+    +     progressItemHtml('To-Do',   tp.done, tp.total, tPct)
+    +   '</div>'
+    + '</div>';
+}
+function progressItemHtml(label, done, total, pct) {
+  const doneCls = total > 0 && done === total ? ' done' : '';
+  return ''
+    + '<div class="progress-item">'
+    +   '<span class="label">' + esc(label) + '</span>'
+    +   '<span class="progress-bar"><span class="fill' + doneCls + '" style="width:' + pct + '%"></span></span>'
+    +   '<span class="progress-pct">' + done + '/' + total + '</span>'
+    + '</div>';
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   INSTANCE VIEW
+   ════════════════════════════════════════════════════════════════════════ */
+function renderInstance(root, slug) {
+  const inst = _instances.find(i => i.slug === slug);
+  if (!inst) {
+    root.className = 'narrow';
+    root.innerHTML = ''
+      + '<a class="crumb" onclick="goDashboard()">← All Trips</a>'
+      + '<div class="empty"><div class="empty-title">Trip not found</div>'
+      + '<div class="empty-msg">It may have been deleted, or the link is wrong.</div></div>';
+    return;
+  }
+  document.title = 'PreShot · ' + inst.name;
+  const type = _types.find(t => t.id === inst.type_id);
+  const cd = countdownLabel(inst);
+  const cdHtml = cd ? '<span class="trip-countdown ' + cd.cls + '" style="font-size:0.7rem">' + esc(cd.text) + '</span>' : '';
+  const dates = fmtDateRange(inst.start_date, inst.end_date);
+  root.className = 'wrap';
+  root.innerHTML = ''
+    + '<a class="crumb" onclick="goDashboard()">← All Trips</a>'
+    + '<div class="instance-header">'
+    +   '<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">'
+    +     '<div style="flex:1;min-width:0">'
+    +       '<div class="instance-name">' + esc(inst.name) + '</div>'
+    +       '<div class="instance-meta">' + esc(dates)
+    +         (type ? ' · ' + esc(type.name) : '')
+    +         (cd ? ' ' + cdHtml : '')
+    +       '</div>'
+    +     '</div>'
+    +     '<div class="instance-actions">'
+    +       '<button class="btn btn-outline btn-sm" onclick="editInstance(' + inst.id + ')">Edit details</button>'
+    +       '<button class="btn btn-outline btn-sm" onclick="deleteInstance(' + inst.id + ')">Delete trip</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="tabs" id="instanceTabs">'
+    +   '<button class="tab' + (_activeMobileTab === 'packing' ? ' active' : '') + '" onclick="setMobileTab(\'packing\')">Packing</button>'
+    +   '<button class="tab' + (_activeMobileTab === 'todo' ? ' active' : '') + '" onclick="setMobileTab(\'todo\')">To-Do</button>'
+    + '</div>'
+    + '<div class="panes" id="instancePanes">'
+    +   paneHtml(inst, 'packing', 'Packing')
+    +   paneHtml(inst, 'todo',    'To-Do')
+    + '</div>';
+  applyMobileTab();
+  installDragHandlers();
+}
+function paneHtml(inst, kind, title) {
+  const items = instanceItemsForList(inst, kind);
+  const set = _completionsByInstance.get(inst.id) || new Set();
+  const done = items.filter(i => set.has(i._origin + ':' + i.id)).length;
+  const itemsHtml = items.length
+    ? items.map(it => itemHtml(inst.id, kind, it, set)).join('')
+    : '<div class="empty-list">Nothing here yet.<br>Type below to add the first item.</div>';
+  return ''
+    + '<div class="pane" data-pane="' + kind + '">'
+    +   '<div class="pane-header">'
+    +     '<div class="pane-title">' + esc(title) + '</div>'
+    +     '<div class="pane-progress">' + done + ' / ' + items.length + '</div>'
+    +   '</div>'
+    +   '<div class="pane-list" data-list="' + kind + '" data-instance-id="' + inst.id + '" data-context="instance">'
+    +     itemsHtml
+    +   '</div>'
+    +   '<div class="add-row">'
+    +     '<input class="add-input" placeholder="+ Add item" '
+    +       'onkeydown="if(event.key===\'Enter\')addInstanceItem(' + inst.id + ',\'' + kind + '\',this)" />'
+    +     '<button class="add-btn" onclick="addInstanceItem(' + inst.id + ',\'' + kind + '\',this.previousElementSibling)">Add</button>'
+    +   '</div>'
+    + '</div>';
+}
+function itemHtml(instanceId, kind, item, completionSet) {
+  const isDone = completionSet.has(item._origin + ':' + item.id);
+  const tagText = item._origin === 'type' ? 'template' : 'this trip';
+  const cls = 'item ' + (item._origin === 'type' ? 'tmpl' : 'inst') + (isDone ? ' done' : '');
+  return ''
+    + '<div class="' + cls + '" '
+    +   'data-item-id="' + item.id + '" '
+    +   'data-origin="' + item._origin + '" '
+    +   'data-kind="' + kind + '" '
+    +   'draggable="false">'
+    +   '<span class="drag-handle" title="Drag to reorder" data-handle="1">'
+    +     '<svg viewBox="0 0 16 16" aria-hidden="true">'
+    +       '<circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/>'
+    +       '<circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/>'
+    +       '<circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/>'
+    +     '</svg>'
+    +   '</span>'
+    +   '<input type="checkbox" class="item-cb"' + (isDone ? ' checked' : '') + ' '
+    +     'onchange="toggleCompletion(' + instanceId + ',\'' + item._origin + '\',' + item.id + ',this.checked)">'
+    +   '<span class="item-label" data-id="' + item.id + '" data-origin="' + item._origin + '" '
+    +     'tabindex="0" '
+    +     'onclick="beginEditLabel(this)" '
+    +     'onblur="commitEditLabel(this)" '
+    +     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}else if(event.key===\'Escape\'){cancelEditLabel(this);}">'
+    +     esc(item.label)
+    +   '</span>'
+    +   '<span class="item-tag">' + tagText + '</span>'
+    +   '<div class="item-actions">'
+    +     '<button class="btn-icon danger" title="Delete" onclick="deleteItem(\'' + item._origin + '\',' + item.id + ',' + instanceId + ',\'' + kind + '\')">'
+    +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+    +     '</button>'
+    +   '</div>'
+    + '</div>';
+}
+function setMobileTab(t) {
+  _activeMobileTab = t;
+  document.querySelectorAll('#instanceTabs .tab').forEach(b => {
+    b.classList.toggle('active', b.textContent.trim().toLowerCase().replace(/-/g, '') === t.replace(/-/g, ''));
+  });
+  applyMobileTab();
+}
+function applyMobileTab() {
+  const isMobile = window.matchMedia('(max-width: 767px)').matches;
+  if (!isMobile) return;
+  document.querySelectorAll('#instancePanes .pane').forEach(p => {
+    const k = p.dataset.pane;
+    p.style.display = (k === _activeMobileTab) ? 'block' : 'none';
+  });
+}
+window.addEventListener('resize', () => {
+  if (_activeView === 'instance') applyMobileTab();
+});
+
+/* ════════════════════════════════════════════════════════════════════════
+   ITEM ACTIONS
+   ════════════════════════════════════════════════════════════════════════ */
+async function toggleCompletion(instanceId, origin, itemId, checked) {
+  try {
+    if (checked) {
+      await sb('POST', 'completions', {
+        instance_id: instanceId, source_kind: origin, source_item_id: itemId
+      }, { Prefer: 'resolution=merge-duplicates,return=minimal' });
+      let s = _completionsByInstance.get(instanceId);
+      if (!s) { s = new Set(); _completionsByInstance.set(instanceId, s); }
+      s.add(origin + ':' + itemId);
+    } else {
+      await sb('DELETE',
+        'completions?instance_id=eq.' + instanceId
+        + '&source_kind=eq.' + origin
+        + '&source_item_id=eq.' + itemId);
+      const s = _completionsByInstance.get(instanceId);
+      if (s) s.delete(origin + ':' + itemId);
+    }
+    // Optimistic visual update — re-render just the affected pane silently.
+    const inst = _instances.find(i => i.id === instanceId);
+    if (inst) {
+      // Update done-count + strikethrough without full re-render
+      const row = document.querySelector('.item[data-origin="' + origin + '"][data-item-id="' + itemId + '"]');
+      if (row) row.classList.toggle('done', checked);
+      // Refresh pane progress + dashboard would be stale, but next sync covers it.
+      const pane = row && row.closest('.pane');
+      if (pane) {
+        const kind = pane.dataset.pane;
+        const p = progressFor(inst, kind);
+        const el = pane.querySelector('.pane-progress');
+        if (el) el.textContent = p.done + ' / ' + p.total;
+      }
+    }
+  } catch (e) {
+    showToast('Save failed: ' + e.message);
+  }
+}
+
+async function addInstanceItem(instanceId, kind, inputEl) {
+  const label = (inputEl.value || '').trim();
+  if (!label) return;
+  inputEl.disabled = true;
+  try {
+    const items = (_instanceItemsByInstance.get(instanceId) || []).filter(i => i.list_kind === kind);
+    const maxPos = items.reduce((m, i) => Math.max(m, i.position), 0);
+    const created = await sb('POST', 'instance_items', {
+      instance_id: instanceId, list_kind: kind, position: maxPos + 1, label
+    });
+    const newItem = Array.isArray(created) ? created[0] : created;
+    let g = _instanceItemsByInstance.get(instanceId);
+    if (!g) { g = []; _instanceItemsByInstance.set(instanceId, g); }
+    g.push(newItem);
+    inputEl.value = '';
+    rerenderInstancePane(instanceId, kind);
+  } catch (e) {
+    showToast('Add failed: ' + e.message);
+  } finally {
+    inputEl.disabled = false;
+    inputEl.focus();
+  }
+}
+
+async function addTypeItem(typeId, kind, inputEl) {
+  const label = (inputEl.value || '').trim();
+  if (!label) return;
+  inputEl.disabled = true;
+  try {
+    const items = (_typeItemsByType.get(typeId) || []).filter(i => i.list_kind === kind);
+    const maxPos = items.reduce((m, i) => Math.max(m, i.position), 0);
+    const created = await sb('POST', 'type_items', {
+      type_id: typeId, list_kind: kind, position: maxPos + 1, label
+    });
+    const newItem = Array.isArray(created) ? created[0] : created;
+    let g = _typeItemsByType.get(typeId);
+    if (!g) { g = []; _typeItemsByType.set(typeId, g); }
+    g.push(newItem);
+    inputEl.value = '';
+    rerenderTypePane(typeId, kind);
+  } catch (e) {
+    showToast('Add failed: ' + e.message);
+  } finally {
+    inputEl.disabled = false;
+    inputEl.focus();
+  }
+}
+
+function beginEditLabel(el) {
+  if (el.getAttribute('contenteditable') === 'true') return;
+  el.dataset.original = el.textContent;
+  el.setAttribute('contenteditable', 'true');
+  // Place caret at end
+  setTimeout(() => {
+    el.focus();
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    r.collapse(false);
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
+  }, 0);
+}
+function cancelEditLabel(el) {
+  el.textContent = el.dataset.original || '';
+  el.removeAttribute('contenteditable');
+  el.blur();
+}
+async function commitEditLabel(el) {
+  if (el.getAttribute('contenteditable') !== 'true') return;
+  el.removeAttribute('contenteditable');
+  const next = el.textContent.trim();
+  const orig = el.dataset.original || '';
+  if (next === orig) return;
+  if (!next) { el.textContent = orig; return; }
+  const id = parseInt(el.dataset.id, 10);
+  const origin = el.dataset.origin;
+  const table = origin === 'type' ? 'type_items' : 'instance_items';
+  try {
+    await sb('PATCH', table + '?id=eq.' + id, { label: next });
+    const list = origin === 'type'
+      ? Array.from(_typeItemsByType.values()).flat()
+      : Array.from(_instanceItemsByInstance.values()).flat();
+    const it = list.find(x => x.id === id);
+    if (it) it.label = next;
+  } catch (e) {
+    el.textContent = orig;
+    showToast('Save failed: ' + e.message);
+  }
+}
+
+function deleteItem(origin, itemId, instanceId, kind) {
+  const table = origin === 'type' ? 'type_items' : 'instance_items';
+  // For TYPE items: deletion affects EVERY instance's view of this type,
+  // not just the current one. Confirm.
+  if (origin === 'type' && _activeView === 'instance') {
+    confirm({
+      title: 'Delete from template?',
+      message: 'This item is part of the trip template. Deleting it removes it from every trip of this type. Use the trash on a "this trip" item to remove just here.',
+      okText: 'Delete from template',
+      onOk: () => doDeleteItem(table, itemId, origin)
+    });
+    return;
+  }
+  doDeleteItem(table, itemId, origin);
+}
+async function doDeleteItem(table, itemId, origin) {
+  // Snapshot the item for undo
+  const list = origin === 'type'
+    ? Array.from(_typeItemsByType.values()).flat()
+    : Array.from(_instanceItemsByInstance.values()).flat();
+  const item = list.find(x => x.id === itemId);
+  if (!item) return;
+  try {
+    await sb('DELETE', table + '?id=eq.' + itemId);
+    // Optimistic local removal
+    if (origin === 'type') {
+      const g = _typeItemsByType.get(item.type_id) || [];
+      _typeItemsByType.set(item.type_id, g.filter(x => x.id !== itemId));
+    } else {
+      const g = _instanceItemsByInstance.get(item.instance_id) || [];
+      _instanceItemsByInstance.set(item.instance_id, g.filter(x => x.id !== itemId));
+    }
+    rerenderActive();
+    armUndo({
+      label: 'Deleted "' + (item.label.length > 30 ? item.label.substring(0,30) + '…' : item.label) + '"',
+      restore: async () => {
+        // Re-create with same label/position. New id, but completion entries
+        // for the old id are gone — that's acceptable for an undo.
+        const created = await sb('POST', table, {
+          ...(origin === 'type'
+              ? { type_id: item.type_id }
+              : { instance_id: item.instance_id }),
+          list_kind: item.list_kind, position: item.position, label: item.label
+        });
+        const made = Array.isArray(created) ? created[0] : created;
+        if (origin === 'type') {
+          let g = _typeItemsByType.get(item.type_id) || [];
+          g.push(made); _typeItemsByType.set(item.type_id, g);
+        } else {
+          let g = _instanceItemsByInstance.get(item.instance_id) || [];
+          g.push(made); _instanceItemsByInstance.set(item.instance_id, g);
+        }
+        rerenderActive();
+      }
+    });
+  } catch (e) {
+    showToast('Delete failed: ' + e.message);
+  }
+}
+
+function rerenderInstancePane(instanceId, kind) {
+  if (_activeView !== 'instance') return;
+  const inst = _instances.find(i => i.id === instanceId);
+  if (!inst) return;
+  const pane = document.querySelector('.pane[data-pane="' + kind + '"]');
+  if (!pane) return;
+  // Replace just this pane's contents in-place
+  const tmp = document.createElement('div');
+  tmp.innerHTML = paneHtml(inst, kind, kind === 'packing' ? 'Packing' : 'To-Do');
+  const newPane = tmp.firstElementChild;
+  pane.replaceWith(newPane);
+  applyMobileTab();
+  installDragHandlers();
+}
+function rerenderTypePane(typeId, kind) {
+  if (_activeView !== 'type-edit') return;
+  const t = _types.find(x => x.id === typeId);
+  if (!t) return;
+  const pane = document.querySelector('.pane[data-pane="' + kind + '"]');
+  if (!pane) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = typePaneHtml(t, kind, kind === 'packing' ? 'Packing' : 'To-Do');
+  const newPane = tmp.firstElementChild;
+  pane.replaceWith(newPane);
+  applyMobileTab();
+  installDragHandlers();
+}
+function rerenderActive() {
+  if (_activeView === 'instance' && _activeInstanceSlug) {
+    renderInstance(document.getElementById('viewRoot'), _activeInstanceSlug);
+  } else if (_activeView === 'type-edit' && _activeTypeId) {
+    renderTypeEdit(document.getElementById('viewRoot'), _activeTypeId);
+  } else if (_activeView === 'dashboard') {
+    renderDashboard(document.getElementById('viewRoot'));
+  } else if (_activeView === 'types') {
+    renderTypes(document.getElementById('viewRoot'));
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   TYPES VIEW
+   ════════════════════════════════════════════════════════════════════════ */
+function renderTypes(root) {
+  document.title = 'PreShot · Types';
+  root.className = 'narrow';
+  if (!_types.length) {
+    root.innerHTML = ''
+      + '<a class="crumb" onclick="goDashboard()">← Trips</a>'
+      + '<h2 class="section">Types</h2>'
+      + '<div class="empty">'
+      + '<span class="empty-emoji">\u{1F4CB}</span>'
+      + '<div class="empty-title">No types yet</div>'
+      + '<div class="empty-msg">A type is a template (e.g. “Tri-Annuals”, “World Qualifiers”) with a default packing &amp; to-do list. Create one and you can spin up trips from it.</div>'
+      + '<button class="btn btn-primary" onclick="goNewType()">+ New type</button>'
+      + '</div>';
+    return;
+  }
+  let html = ''
+    + '<a class="crumb" onclick="goDashboard()">← Trips</a>'
+    + '<div style="display:flex;align-items:baseline;gap:10px;margin-bottom:10px">'
+    +   '<h2 class="section" style="margin:0">Types</h2>'
+    +   '<div style="margin-left:auto"><button class="btn btn-primary btn-sm" onclick="goNewType()">+ New type</button></div>'
+    + '</div>';
+  for (const t of _types) {
+    const itemCount = (_typeItemsByType.get(t.id) || []).length;
+    const instCount = _instances.filter(i => i.type_id === t.id).length;
+    html += ''
+      + '<div class="type-row" onclick="goTypeEdit(' + t.id + ')">'
+      +   '<div style="flex:1;min-width:0">'
+      +     '<div class="type-name">' + esc(t.name) + '</div>'
+      +     '<div class="type-stats">' + itemCount + ' item' + (itemCount === 1 ? '' : 's')
+      +       ' · ' + instCount + ' trip' + (instCount === 1 ? '' : 's') + '</div>'
+      +   '</div>'
+      +   '<div class="type-actions" onclick="event.stopPropagation()">'
+      +     '<button class="btn-icon" title="Clone" onclick="cloneType(' + t.id + ')">'
+      +       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>'
+      +     '</button>'
+      +     '<button class="btn-icon" title="Edit" onclick="goTypeEdit(' + t.id + ')">'
+      +       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z"/></svg>'
+      +     '</button>'
+      +     '<button class="btn-icon danger" title="Delete" onclick="deleteType(' + t.id + ')">'
+      +       '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>'
+      +     '</button>'
+      +   '</div>'
+      + '</div>';
+  }
+  root.innerHTML = html;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   TYPE EDITOR
+   ════════════════════════════════════════════════════════════════════════ */
+function renderTypeEdit(root, typeId) {
+  const t = _types.find(x => x.id === typeId);
+  if (!t) {
+    root.className = 'narrow';
+    root.innerHTML = '<a class="crumb" onclick="goTypes()">← Types</a>'
+      + '<div class="empty"><div class="empty-title">Type not found</div></div>';
+    return;
+  }
+  document.title = 'PreShot · ' + t.name;
+  root.className = 'wrap';
+  root.innerHTML = ''
+    + '<a class="crumb" onclick="goTypes()">← Types</a>'
+    + '<div class="instance-header">'
+    +   '<div style="display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap">'
+    +     '<div style="flex:1;min-width:0">'
+    +       '<div class="instance-name" data-id="' + t.id + '" '
+    +         'onclick="beginEditTypeName(this)" onblur="commitEditTypeName(this)" '
+    +         'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}else if(event.key===\'Escape\'){cancelEditTypeName(this);}" '
+    +         'tabindex="0" style="cursor:text">' + esc(t.name) + '</div>'
+    +       '<div class="instance-meta">Template · used by '
+    +         _instances.filter(i => i.type_id === t.id).length + ' trip(s)</div>'
+    +     '</div>'
+    +     '<div class="instance-actions">'
+    +       '<button class="btn btn-outline btn-sm" onclick="cloneType(' + t.id + ')">Clone</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="tabs" id="instanceTabs">'
+    +   '<button class="tab' + (_activeMobileTab === 'packing' ? ' active' : '') + '" onclick="setMobileTab(\'packing\')">Packing</button>'
+    +   '<button class="tab' + (_activeMobileTab === 'todo' ? ' active' : '') + '" onclick="setMobileTab(\'todo\')">To-Do</button>'
+    + '</div>'
+    + '<div class="panes" id="instancePanes">'
+    +   typePaneHtml(t, 'packing', 'Packing')
+    +   typePaneHtml(t, 'todo',    'To-Do')
+    + '</div>';
+  applyMobileTab();
+  installDragHandlers();
+}
+function typePaneHtml(t, kind, title) {
+  const items = (_typeItemsByType.get(t.id) || []).filter(i => i.list_kind === kind)
+                  .sort((a, b) => a.position - b.position);
+  const itemsHtml = items.length
+    ? items.map(it => typeItemHtml(t.id, kind, it)).join('')
+    : '<div class="empty-list">Nothing here yet.<br>Type below to add the first item.</div>';
+  return ''
+    + '<div class="pane" data-pane="' + kind + '">'
+    +   '<div class="pane-header">'
+    +     '<div class="pane-title">' + esc(title) + '</div>'
+    +     '<div class="pane-progress">' + items.length + ' item' + (items.length === 1 ? '' : 's') + '</div>'
+    +   '</div>'
+    +   '<div class="pane-list" data-list="' + kind + '" data-type-id="' + t.id + '" data-context="type">'
+    +     itemsHtml
+    +   '</div>'
+    +   '<div class="add-row">'
+    +     '<input class="add-input" placeholder="+ Add item" '
+    +       'onkeydown="if(event.key===\'Enter\')addTypeItem(' + t.id + ',\'' + kind + '\',this)" />'
+    +     '<button class="add-btn" onclick="addTypeItem(' + t.id + ',\'' + kind + '\',this.previousElementSibling)">Add</button>'
+    +   '</div>'
+    + '</div>';
+}
+function typeItemHtml(typeId, kind, item) {
+  return ''
+    + '<div class="item tmpl" '
+    +   'data-item-id="' + item.id + '" '
+    +   'data-origin="type" '
+    +   'data-kind="' + kind + '">'
+    +   '<span class="drag-handle" title="Drag to reorder" data-handle="1">'
+    +     '<svg viewBox="0 0 16 16" aria-hidden="true">'
+    +       '<circle cx="5" cy="3" r="1.4"/><circle cx="11" cy="3" r="1.4"/>'
+    +       '<circle cx="5" cy="8" r="1.4"/><circle cx="11" cy="8" r="1.4"/>'
+    +       '<circle cx="5" cy="13" r="1.4"/><circle cx="11" cy="13" r="1.4"/>'
+    +     '</svg>'
+    +   '</span>'
+    +   '<span style="width:22px;flex:0 0 auto"></span>'  /* spacer where checkbox would be */
+    +   '<span class="item-label" data-id="' + item.id + '" data-origin="type" '
+    +     'tabindex="0" '
+    +     'onclick="beginEditLabel(this)" '
+    +     'onblur="commitEditLabel(this)" '
+    +     'onkeydown="if(event.key===\'Enter\'){event.preventDefault();this.blur();}else if(event.key===\'Escape\'){cancelEditLabel(this);}">'
+    +     esc(item.label)
+    +   '</span>'
+    +   '<div class="item-actions">'
+    +     '<button class="btn-icon danger" title="Delete from template" onclick="deleteItem(\'type\',' + item.id + ',null,\'' + kind + '\')">'
+    +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>'
+    +     '</button>'
+    +   '</div>'
+    + '</div>';
+}
+
+function beginEditTypeName(el) {
+  if (el.getAttribute('contenteditable') === 'true') return;
+  el.dataset.original = el.textContent;
+  el.setAttribute('contenteditable', 'true');
+  setTimeout(() => {
+    el.focus();
+    const r = document.createRange();
+    r.selectNodeContents(el);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(r);
+  }, 0);
+}
+function cancelEditTypeName(el) {
+  el.textContent = el.dataset.original || '';
+  el.removeAttribute('contenteditable');
+  el.blur();
+}
+async function commitEditTypeName(el) {
+  if (el.getAttribute('contenteditable') !== 'true') return;
+  el.removeAttribute('contenteditable');
+  const next = el.textContent.trim();
+  const orig = el.dataset.original || '';
+  if (!next) { el.textContent = orig; return; }
+  if (next === orig) return;
+  const id = parseInt(el.dataset.id, 10);
+  try {
+    await sb('PATCH', 'types?id=eq.' + id, { name: next });
+    const t = _types.find(x => x.id === id);
+    if (t) t.name = next;
+  } catch (e) {
+    el.textContent = orig;
+    showToast('Save failed: ' + e.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   CLONE / DELETE TYPE
+   ════════════════════════════════════════════════════════════════════════ */
+async function cloneType(typeId) {
+  const src = _types.find(t => t.id === typeId);
+  if (!src) return;
+  const copyName = src.name + ' (copy)';
+  const slug = await uniqueTypeSlug(copyName);
+  try {
+    const created = await sb('POST', 'types', {
+      slug, name: copyName, description: src.description
+    });
+    const newType = Array.isArray(created) ? created[0] : created;
+    const items = (_typeItemsByType.get(typeId) || []);
+    if (items.length) {
+      const rows = items.map(i => ({
+        type_id: newType.id, list_kind: i.list_kind, position: i.position, label: i.label
+      }));
+      const createdItems = await sb('POST', 'type_items', rows);
+      _typeItemsByType.set(newType.id, Array.isArray(createdItems) ? createdItems : [createdItems]);
+    } else {
+      _typeItemsByType.set(newType.id, []);
+    }
+    _types.push(newType);
+    _types.sort((a,b) => a.name.localeCompare(b.name));
+    goTypeEdit(newType.id);
+    setTimeout(() => {
+      // Auto-select the title for editing
+      const el = document.querySelector('.instance-name');
+      if (el) beginEditTypeName(el);
+    }, 50);
+  } catch (e) {
+    showToast('Clone failed: ' + e.message);
+  }
+}
+async function uniqueTypeSlug(name) {
+  let base = slugify(name) || 'type';
+  let cand = base, n = 1;
+  while (_types.some(t => t.slug === cand)) { n++; cand = base + '-' + n; }
+  return cand;
+}
+
+function deleteType(typeId) {
+  const t = _types.find(x => x.id === typeId);
+  if (!t) return;
+  const usedBy = _instances.filter(i => i.type_id === typeId).length;
+  if (usedBy > 0) {
+    confirm({
+      title: 'Type in use',
+      message: '"' + t.name + '" is the template for ' + usedBy + ' active trip(s). Delete the trips first, or clone to a different type, then try again.',
+      okText: 'OK',
+      okOnly: true
+    });
+    return;
+  }
+  confirm({
+    title: 'Delete type?',
+    message: 'Permanently delete "' + t.name + '" and its template items? This can’t be undone.',
+    okText: 'Delete type',
+    onOk: async () => {
+      try {
+        await sb('DELETE', 'types?id=eq.' + typeId);
+        _types = _types.filter(x => x.id !== typeId);
+        _typeItemsByType.delete(typeId);
+        rerenderActive();
+        showToast('Deleted "' + t.name + '"');
+      } catch (e) { showToast('Delete failed: ' + e.message); }
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   NEW TYPE / NEW INSTANCE
+   ════════════════════════════════════════════════════════════════════════ */
+function renderNewType(root) {
+  document.title = 'PreShot · New type';
+  root.className = 'narrow';
+  root.innerHTML = ''
+    + '<a class="crumb" onclick="goTypes()">← Types</a>'
+    + '<h2 class="section">New type</h2>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px">'
+    +   '<div class="form-grid">'
+    +     '<div><label for="ntName">Name</label>'
+    +       '<input id="ntName" placeholder="e.g. Tri-Annuals" autofocus>'
+    +     '</div>'
+    +     '<div><label for="ntDesc">Description (optional)</label>'
+    +       '<textarea id="ntDesc" placeholder="Notes about this kind of trip..."></textarea>'
+    +     '</div>'
+    +     '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +       '<button class="btn btn-outline" onclick="goTypes()">Cancel</button>'
+    +       '<button class="btn btn-primary" onclick="submitNewType()">Create type</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>';
+}
+async function submitNewType() {
+  const name = document.getElementById('ntName').value.trim();
+  const desc = document.getElementById('ntDesc').value.trim();
+  if (!name) { showToast('Type name required'); return; }
+  const slug = await uniqueTypeSlug(name);
+  try {
+    const created = await sb('POST', 'types', { slug, name, description: desc || null });
+    const t = Array.isArray(created) ? created[0] : created;
+    _types.push(t); _types.sort((a,b) => a.name.localeCompare(b.name));
+    _typeItemsByType.set(t.id, []);
+    goTypeEdit(t.id);
+  } catch (e) { showToast('Create failed: ' + e.message); }
+}
+
+function renderNewInstance(root) {
+  document.title = 'PreShot · New trip';
+  root.className = 'narrow';
+  if (!_types.length) {
+    root.innerHTML = ''
+      + '<a class="crumb" onclick="goDashboard()">← Trips</a>'
+      + '<div class="empty">'
+      + '<span class="empty-emoji">\u{1F4CB}</span>'
+      + '<div class="empty-title">Create a type first</div>'
+      + '<div class="empty-msg">Trips are spun up from a type (template). Define one (e.g. “Tri-Annuals”) and you can stamp out trips from it.</div>'
+      + '<button class="btn btn-primary" onclick="goNewType()">+ New type</button>'
+      + '</div>';
+    return;
+  }
+  const today = todayISO();
+  const optsHtml = _types.map(t => '<option value="' + t.id + '">' + esc(t.name) + '</option>').join('');
+  root.innerHTML = ''
+    + '<a class="crumb" onclick="goDashboard()">← Trips</a>'
+    + '<h2 class="section">New trip</h2>'
+    + '<div style="background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px">'
+    +   '<div class="form-grid">'
+    +     '<div><label for="niType">Type</label><select id="niType">' + optsHtml + '</select></div>'
+    +     '<div><label for="niName">Name</label>'
+    +       '<input id="niName" placeholder="e.g. 9 Ball Tri-Annuals — May 2026" autofocus>'
+    +     '</div>'
+    +     '<div class="form-row">'
+    +       '<div><label for="niStart">Start</label><input type="date" id="niStart" value="' + today + '"></div>'
+    +       '<div><label for="niEnd">End (optional)</label><input type="date" id="niEnd"></div>'
+    +     '</div>'
+    +     '<div style="display:flex;gap:8px;justify-content:flex-end">'
+    +       '<button class="btn btn-outline" onclick="goDashboard()">Cancel</button>'
+    +       '<button class="btn btn-primary" onclick="submitNewInstance()">Create trip</button>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>';
+}
+async function submitNewInstance() {
+  const typeId = parseInt(document.getElementById('niType').value, 10);
+  const name = document.getElementById('niName').value.trim();
+  const start = document.getElementById('niStart').value;
+  const end = document.getElementById('niEnd').value;
+  if (!typeId) { showToast('Pick a type'); return; }
+  if (!name)   { showToast('Trip name required'); return; }
+  if (!start)  { showToast('Start date required'); return; }
+  if (end && end < start) { showToast('End can’t be before start'); return; }
+  let slug = slugify(name) || 'trip';
+  let cand = slug, n = 1;
+  while (_instances.some(i => i.slug === cand)) { n++; cand = slug + '-' + n; }
+  try {
+    const created = await sb('POST', 'instances', {
+      type_id: typeId, slug: cand, name, start_date: start, end_date: end || null
+    });
+    const inst = Array.isArray(created) ? created[0] : created;
+    _instances.push(inst);
+    _instances.sort((a,b) => a.start_date.localeCompare(b.start_date));
+    _instanceItemsByInstance.set(inst.id, []);
+    goInstance(inst.slug);
+  } catch (e) { showToast('Create failed: ' + e.message); }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   EDIT INSTANCE DETAILS / DELETE INSTANCE
+   ════════════════════════════════════════════════════════════════════════ */
+async function editInstance(instanceId) {
+  const inst = _instances.find(i => i.id === instanceId);
+  if (!inst) return;
+  showInstanceEditModal(inst);
+}
+function showInstanceEditModal(inst) {
+  const m = ensureModal('instanceEditModal', '<div class="modal-box">'
+    + '<div class="modal-title">Edit trip details</div>'
+    + '<div class="form-grid">'
+    +   '<div><label>Name</label><input type="text" id="ieName"></div>'
+    +   '<div class="form-row">'
+    +     '<div><label>Start</label><input type="date" id="ieStart"></div>'
+    +     '<div><label>End (optional)</label><input type="date" id="ieEnd"></div>'
+    +   '</div>'
+    + '</div>'
+    + '<div class="modal-actions">'
+    +   '<button class="btn btn-outline" onclick="closeInstanceEdit()">Cancel</button>'
+    +   '<button class="btn btn-primary" id="ieSaveBtn">Save</button>'
+    + '</div>'
+    + '</div>');
+  document.getElementById('ieName').value = inst.name;
+  document.getElementById('ieStart').value = inst.start_date;
+  document.getElementById('ieEnd').value = inst.end_date || '';
+  document.getElementById('ieSaveBtn').onclick = async () => {
+    const name = document.getElementById('ieName').value.trim();
+    const start = document.getElementById('ieStart').value;
+    const end = document.getElementById('ieEnd').value;
+    if (!name || !start) { showToast('Name + start required'); return; }
+    if (end && end < start) { showToast('End can’t be before start'); return; }
+    try {
+      await sb('PATCH', 'instances?id=eq.' + inst.id, {
+        name, start_date: start, end_date: end || null
+      });
+      Object.assign(inst, { name, start_date: start, end_date: end || null });
+      closeInstanceEdit();
+      rerenderActive();
+    } catch (e) { showToast('Save failed: ' + e.message); }
+  };
+  m.classList.add('shown');
+}
+function closeInstanceEdit() { document.getElementById('instanceEditModal').classList.remove('shown'); }
+
+function deleteInstance(instanceId) {
+  const inst = _instances.find(i => i.id === instanceId);
+  if (!inst) return;
+  confirm({
+    title: 'Delete this trip?',
+    message: 'Removes "' + inst.name + '" and all its one-off items + completion state. The type stays.',
+    okText: 'Delete trip',
+    onOk: async () => {
+      try {
+        await sb('DELETE', 'instances?id=eq.' + instanceId);
+        _instances = _instances.filter(i => i.id !== instanceId);
+        _instanceItemsByInstance.delete(instanceId);
+        _completionsByInstance.delete(instanceId);
+        goDashboard();
+        showToast('Deleted "' + inst.name + '"');
+      } catch (e) { showToast('Delete failed: ' + e.message); }
+    }
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   DRAG-AND-DROP REORDER
+   Pointer-events based; works on mouse + touch. Drag handle initiates,
+   drop position is determined by midpoint of hovered row.
+   ════════════════════════════════════════════════════════════════════════ */
+let _drag = null;  // { itemId, origin, kind, srcEl, ghost, listEl, originalParent }
+
+function installDragHandlers() {
+  document.querySelectorAll('.drag-handle[data-handle]').forEach(h => {
+    h.onpointerdown = onDragStart;
+  });
+}
+function onDragStart(ev) {
+  if (ev.button !== undefined && ev.button !== 0) return;
+  const handle = ev.currentTarget;
+  const row = handle.closest('.item');
+  if (!row) return;
+  const list = row.parentElement;   // .pane-list
+  if (!list) return;
+  ev.preventDefault();
+  handle.setPointerCapture(ev.pointerId);
+  _drag = {
+    itemId: parseInt(row.dataset.itemId, 10),
+    origin: row.dataset.origin,
+    kind: row.dataset.kind,
+    srcEl: row,
+    listEl: list,
+    pointerId: ev.pointerId
+  };
+  row.classList.add('dragging');
+  document.body.style.cursor = 'grabbing';
+  handle.onpointermove = onDragMove;
+  handle.onpointerup = onDragEnd;
+  handle.onpointercancel = onDragEnd;
+}
+function onDragMove(ev) {
+  if (!_drag) return;
+  // Find the row under the pointer in the same list
+  const target = document.elementFromPoint(ev.clientX, ev.clientY);
+  document.querySelectorAll('.item.drop-above, .item.drop-below').forEach(e => {
+    e.classList.remove('drop-above', 'drop-below');
+  });
+  if (!target) return;
+  const overRow = target.closest('.item');
+  if (!overRow) return;
+  if (overRow === _drag.srcEl) return;
+  if (overRow.parentElement !== _drag.listEl) return;   // can't cross lists
+  // Restrict to same origin section: type-items can only reorder among type items;
+  // instance-items only among instance items.
+  if (overRow.dataset.origin !== _drag.origin) return;
+  const rect = overRow.getBoundingClientRect();
+  const mid = rect.top + rect.height / 2;
+  if (ev.clientY < mid) overRow.classList.add('drop-above');
+  else overRow.classList.add('drop-below');
+}
+async function onDragEnd(ev) {
+  if (!_drag) return;
+  const handle = ev.currentTarget;
+  try { handle.releasePointerCapture(_drag.pointerId); } catch (_) {}
+  document.body.style.cursor = '';
+  const dropAbove = document.querySelector('.item.drop-above');
+  const dropBelow = document.querySelector('.item.drop-below');
+  document.querySelectorAll('.item.drop-above, .item.drop-below').forEach(e => {
+    e.classList.remove('drop-above', 'drop-below');
+  });
+  _drag.srcEl.classList.remove('dragging');
+
+  const drag = _drag;
+  _drag = null;
+  handle.onpointermove = null;
+  handle.onpointerup = null;
+  handle.onpointercancel = null;
+
+  if (!dropAbove && !dropBelow) return;
+  const targetEl = dropAbove || dropBelow;
+  const placeBefore = !!dropAbove;
+
+  // Reorder DOM optimistically
+  if (placeBefore) targetEl.parentElement.insertBefore(drag.srcEl, targetEl);
+  else targetEl.parentElement.insertBefore(drag.srcEl, targetEl.nextSibling);
+
+  // Recompute positions for the rows of this origin within the list
+  const listEl = drag.listEl;
+  const rows = Array.from(listEl.querySelectorAll('.item'))
+    .filter(r => r.dataset.origin === drag.origin);
+  const updates = [];
+  rows.forEach((r, idx) => {
+    updates.push({ id: parseInt(r.dataset.itemId, 10), position: idx + 1 });
+  });
+
+  // Apply to local state + persist
+  const table = drag.origin === 'type' ? 'type_items' : 'instance_items';
+  const localList = drag.origin === 'type'
+    ? Array.from(_typeItemsByType.values()).flat()
+    : Array.from(_instanceItemsByInstance.values()).flat();
+  for (const u of updates) {
+    const row = localList.find(x => x.id === u.id);
+    if (row) row.position = u.position;
+  }
+  try {
+    // PostgREST doesn't easily batch-update varying rows in one shot; fire in parallel.
+    await Promise.all(updates.map(u =>
+      sb('PATCH', table + '?id=eq.' + u.id, { position: u.position })
+    ));
+  } catch (e) {
+    showToast('Reorder save failed: ' + e.message);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   LIVE SYNC POLL (15s)
+   ════════════════════════════════════════════════════════════════════════ */
+function startSyncTimer() {
+  if (_syncTimer) clearInterval(_syncTimer);
+  _syncTimer = setInterval(syncTick, 15000);
+}
+async function syncTick() {
+  if (document.hidden) return;
+  // Snapshot current keys for diff
+  const before = snapshotForDiff();
+  try { await loadAll(); } catch (_) { return; }
+  const after = snapshotForDiff();
+  const changedKeys = diffKeys(before, after);
+  rerenderActive();
+  if (changedKeys.size) flashChangedRows(changedKeys);
+}
+function snapshotForDiff() {
+  const m = new Map();
+  // type_items
+  for (const items of _typeItemsByType.values()) {
+    for (const i of items) m.set('t:' + i.id, i.label + '|' + i.position);
+  }
+  for (const items of _instanceItemsByInstance.values()) {
+    for (const i of items) m.set('i:' + i.id, i.label + '|' + i.position);
+  }
+  for (const [instId, set] of _completionsByInstance.entries()) {
+    for (const k of set) m.set('c:' + instId + ':' + k, '1');
+  }
+  return m;
+}
+function diffKeys(a, b) {
+  const out = new Set();
+  for (const [k, v] of b.entries()) if (a.get(k) !== v) out.add(k);
+  for (const k of a.keys()) if (!b.has(k)) out.add(k);
+  return out;
+}
+function flashChangedRows(keys) {
+  for (const k of keys) {
+    if (k.startsWith('t:')) {
+      const id = k.slice(2);
+      document.querySelectorAll('.item[data-origin="type"][data-item-id="' + id + '"]').forEach(el => flashRow(el));
+    } else if (k.startsWith('i:')) {
+      const id = k.slice(2);
+      document.querySelectorAll('.item[data-origin="instance"][data-item-id="' + id + '"]').forEach(el => flashRow(el));
+    } else if (k.startsWith('c:')) {
+      // Format c:<instId>:<kind>:<itemId>
+      const rest = k.slice(2);
+      const [, originAndId] = rest.split(':');
+      // originAndId actually is the second component. With three colons, split smarter:
+      const parts = rest.split(':');
+      // parts: [instId, origin, itemId]
+      if (parts.length >= 3) {
+        document.querySelectorAll('.item[data-origin="' + parts[1] + '"][data-item-id="' + parts[2] + '"]').forEach(el => flashRow(el));
+      }
+    }
+  }
+}
+function flashRow(el) {
+  el.classList.remove('flash');
+  void el.offsetWidth;
+  el.classList.add('flash');
+  setTimeout(() => el.classList.remove('flash'), 1200);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   TOAST + UNDO + CONFIRM
+   ════════════════════════════════════════════════════════════════════════ */
+let _toastTimer = null;
+function showToast(msg, opts) {
+  opts = opts || {};
+  const t = document.getElementById('toast');
+  document.getElementById('toastMsg').textContent = msg;
+  const btn = document.getElementById('toastBtn');
+  if (opts.actionLabel && opts.onAction) {
+    btn.textContent = opts.actionLabel;
+    btn.classList.remove('hidden');
+    btn.onclick = () => { hideToast(); opts.onAction(); };
+  } else {
+    btn.classList.add('hidden');
+    btn.onclick = null;
+  }
+  t.classList.add('shown');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(hideToast, opts.duration || 3500);
+}
+function hideToast() {
+  document.getElementById('toast').classList.remove('shown');
+}
+function armUndo({ label, restore }) {
+  clearTimeout(_undoTimer);
+  showToast(label, {
+    actionLabel: 'Undo',
+    duration: 5000,
+    onAction: async () => { try { await restore(); } catch (e) { showToast('Undo failed: ' + e.message); } }
+  });
+}
+
+function ensureModal(id, html) {
+  let m = document.getElementById(id);
+  if (!m) {
+    m = document.createElement('div');
+    m.id = id;
+    m.className = 'modal';
+    m.innerHTML = html;
+    document.body.appendChild(m);
+  } else {
+    m.innerHTML = html;
+  }
+  return m;
+}
+
+function confirm(opts) {
+  const m = document.getElementById('confirmModal');
+  document.getElementById('confirmTitle').textContent = opts.title || 'Confirm';
+  document.getElementById('confirmMsg').textContent = opts.message || '';
+  const okBtn = document.getElementById('confirmOkBtn');
+  okBtn.textContent = opts.okText || 'Confirm';
+  okBtn.classList.toggle('btn-danger', !opts.okOnly);
+  okBtn.classList.toggle('btn-primary', !!opts.okOnly);
+  // Cancel button visibility
+  m.querySelector('.modal-actions .btn-outline').style.display = opts.okOnly ? 'none' : '';
+  m._onOk = opts.onOk || null;
+  m.classList.add('shown');
+}
+function closeConfirm(ok) {
+  const m = document.getElementById('confirmModal');
+  m.classList.remove('shown');
+  if (ok && typeof m._onOk === 'function') m._onOk();
+  m._onOk = null;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════════════════ */
+async function init() {
+  document.title = APP_NAME;
+  checkVersion();
+  setInterval(checkVersion, 30000);
+  try {
+    await loadAll();
+  } catch (e) {
+    document.getElementById('viewRoot').innerHTML =
+      '<div class="empty"><div class="empty-title">Could not load</div>'
+      + '<div class="empty-msg">' + esc(e.message) + '</div></div>';
+    return;
+  }
+  await render();
+  startSyncTimer();
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) syncTick();
+  });
+}
+document.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>
