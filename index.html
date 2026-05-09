@@ -881,7 +881,7 @@ function itemHtml(instanceId, kind, item, completionSet) {
     ? '<span class="item-tag">template</span>'
     : '<button class="item-tag" type="button" title="Move to template (will appear on every trip of this type)" '
       + 'onclick="event.stopPropagation();promoteToTemplate(' + instanceId + ',' + item.id + ')">'
-      + 'this trip<span class="promote-arrow"> → template</span>'
+      + 'this trip'
       + '</button>';
   return ''
     + '<div class="' + cls + '" '
