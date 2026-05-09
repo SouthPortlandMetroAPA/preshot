@@ -11,4 +11,4 @@
      2. UPDATE apa_core.apps SET version=$NEW WHERE app_name='PreShot'.
      3. git push.
    ════════════════════════════════════════════════════════════════════════ */
-window.APP_VERSION = '0.3';
+window.APP_VERSION = '0.4';
