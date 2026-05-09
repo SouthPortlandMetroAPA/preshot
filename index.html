@@ -1803,8 +1803,22 @@ async function syncTick() {
   try { await loadAll(); } catch (_) { return; }
   const after = snapshotForDiff();
   const changedKeys = diffKeys(before, after);
+  // If the user is mid-typing in any input (the "+ Add item" box, a
+  // contenteditable label, the new-trip form, etc.), don't tear the
+  // DOM down out from under them. Local state is already refreshed;
+  // the next sync tick or any user-triggered render will catch up
+  // once they're idle.
+  if (isUserEditing()) return;
   rerenderActive();
   if (changedKeys.size) flashChangedRows(changedKeys);
+}
+function isUserEditing() {
+  const a = document.activeElement;
+  if (!a) return false;
+  const t = a.tagName;
+  if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return true;
+  if (a.getAttribute && a.getAttribute('contenteditable') === 'true') return true;
+  return false;
 }
 function snapshotForDiff() {
   const m = new Map();
