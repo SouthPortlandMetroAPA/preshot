@@ -321,30 +321,22 @@
     background: #f3f4f6;
     border: 1px solid transparent;
     flex: 0 0 auto;
-    opacity: 0;
     font-family: inherit;
-    transition: opacity 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+    /* Always visible — no opacity fade-in, no width transitions. The
+       previous hover-reveal jittered the row layout every time the
+       cursor crossed the pill. Color/border still animate on hover for
+       the clickable button variant. */
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
   }
-  .item:hover .item-tag { opacity: 1; }
-  /* When the tag is a <button>, signal clickability on hover. */
   button.item-tag {
     cursor: pointer;
   }
-  button.item-tag:hover {
+  button.item-tag:hover,
+  button.item-tag:focus-visible {
     background: rgba(0,49,161,0.1);
     color: var(--spm-accent);
     border-color: rgba(0,49,161,0.3);
-  }
-  button.item-tag .promote-arrow {
-    display: inline-block;
-    width: 0;
-    overflow: hidden;
-    transition: width 0.18s ease;
-    vertical-align: baseline;
-  }
-  button.item-tag:hover .promote-arrow,
-  button.item-tag:focus-visible .promote-arrow {
-    width: 7em;  /* enough to fit "→ template" inline on hover */
+    outline: none;
   }
 
   .item-actions {
@@ -1094,10 +1086,11 @@ async function addInstanceItem(instanceId, kind, inputEl) {
     if (!g) { g = []; _instanceItemsByInstance.set(instanceId, g); }
     g.push(newItem);
     inputEl.value = '';
-    rerenderInstancePane(instanceId, kind);
+    // Pane is rebuilt; helper focuses the new add-input so consecutive
+    // Enter→type→Enter flows work without re-clicking the field.
+    rerenderInstancePane(instanceId, kind, { focusAdd: true });
   } catch (e) {
     showToast('Add failed: ' + e.message);
-  } finally {
     inputEl.disabled = false;
     inputEl.focus();
   }
@@ -1118,10 +1111,9 @@ async function addTypeItem(typeId, kind, inputEl) {
     if (!g) { g = []; _typeItemsByType.set(typeId, g); }
     g.push(newItem);
     inputEl.value = '';
-    rerenderTypePane(typeId, kind);
+    rerenderTypePane(typeId, kind, { focusAdd: true });
   } catch (e) {
     showToast('Add failed: ' + e.message);
-  } finally {
     inputEl.disabled = false;
     inputEl.focus();
   }
@@ -1230,7 +1222,7 @@ async function doDeleteItem(table, itemId, origin) {
   }
 }
 
-function rerenderInstancePane(instanceId, kind) {
+function rerenderInstancePane(instanceId, kind, opts) {
   if (_activeView !== 'instance') return;
   const inst = _instances.find(i => i.id === instanceId);
   if (!inst) return;
@@ -1243,8 +1235,12 @@ function rerenderInstancePane(instanceId, kind) {
   pane.replaceWith(newPane);
   applyMobileTab();
   installDragHandlers();
+  if (opts && opts.focusAdd) {
+    const i = newPane.querySelector('.add-input');
+    if (i) i.focus();
+  }
 }
-function rerenderTypePane(typeId, kind) {
+function rerenderTypePane(typeId, kind, opts) {
   if (_activeView !== 'type-edit') return;
   const t = _types.find(x => x.id === typeId);
   if (!t) return;
@@ -1256,6 +1252,10 @@ function rerenderTypePane(typeId, kind) {
   pane.replaceWith(newPane);
   applyMobileTab();
   installDragHandlers();
+  if (opts && opts.focusAdd) {
+    const i = newPane.querySelector('.add-input');
+    if (i) i.focus();
+  }
 }
 function rerenderActive() {
   if (_activeView === 'instance' && _activeInstanceSlug) {
