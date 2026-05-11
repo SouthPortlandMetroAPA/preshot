@@ -907,6 +907,12 @@ function itemHtml(instanceId, kind, item, completionSet) {
     +   '</span>'
     +   tagHtml
     +   '<div class="item-actions">'
+    +     '<button class="btn-icon" title="Send to top" onclick="sendToPosition(\'' + item._origin + '\',' + item.id + ',\'top\')">'
+    +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 17 12 12 7 17"/></svg>'
+    +     '</button>'
+    +     '<button class="btn-icon" title="Send to bottom" onclick="sendToPosition(\'' + item._origin + '\',' + item.id + ',\'bottom\')">'
+    +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 7 12 12 17 7"/></svg>'
+    +     '</button>'
     +     '<button class="btn-icon danger" title="Delete" onclick="deleteItem(\'' + item._origin + '\',' + item.id + ',' + instanceId + ',\'' + kind + '\')">'
     +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
     +     '</button>'
@@ -1068,6 +1074,57 @@ async function promoteToTemplate(instanceId, instanceItemId) {
     });
   } catch (e) {
     showToast('Promote failed: ' + e.message);
+  }
+}
+
+/* Send an item to the top or bottom of its list_kind within its parent
+ * (the type, for type-owned items; the instance, for one-offs). Renumbers
+ * positions for all peers in the same list_kind + same parent and persists
+ * all of them. Type items move only among type items; instance items only
+ * among instance items — same scope rule as drag-reorder. */
+async function sendToPosition(origin, itemId, target) {
+  const table = origin === 'type' ? 'type_items' : 'instance_items';
+  let item, peers, parentKey;
+  if (origin === 'type') {
+    item = Array.from(_typeItemsByType.values()).flat().find(x => x.id === itemId);
+    if (!item) return;
+    parentKey = item.type_id;
+    peers = (_typeItemsByType.get(parentKey) || []).filter(x => x.list_kind === item.list_kind);
+  } else {
+    item = Array.from(_instanceItemsByInstance.values()).flat().find(x => x.id === itemId);
+    if (!item) return;
+    parentKey = item.instance_id;
+    peers = (_instanceItemsByInstance.get(parentKey) || []).filter(x => x.list_kind === item.list_kind);
+  }
+  if (peers.length <= 1) return;
+
+  peers.sort((a, b) => a.position - b.position);
+  const idx = peers.findIndex(x => x.id === itemId);
+  if (idx < 0) return;
+  // Already at the target end? Nothing to do.
+  if (target === 'top' && idx === 0) return;
+  if (target === 'bottom' && idx === peers.length - 1) return;
+
+  const moved = peers.splice(idx, 1)[0];
+  if (target === 'top') peers.unshift(moved);
+  else peers.push(moved);
+
+  // Renumber positions starting at 1.
+  const updates = peers.map((p, i) => ({ id: p.id, position: i + 1 }));
+  // Apply locally first so the re-render shows the new order immediately.
+  for (const u of updates) {
+    const p = peers.find(x => x.id === u.id);
+    if (p) p.position = u.position;
+  }
+  rerenderActive();
+
+  try {
+    // PostgREST doesn't batch heterogeneous PATCHes; fire in parallel.
+    await Promise.all(updates.map(u =>
+      sb('PATCH', table + '?id=eq.' + u.id, { position: u.position })
+    ));
+  } catch (e) {
+    showToast('Move save failed: ' + e.message);
   }
 }
 
@@ -1404,6 +1461,12 @@ function typeItemHtml(typeId, kind, item) {
     +     esc(item.label)
     +   '</span>'
     +   '<div class="item-actions">'
+    +     '<button class="btn-icon" title="Send to top" onclick="sendToPosition(\'type\',' + item.id + ',\'top\')">'
+    +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 11 12 6 7 11"/><polyline points="17 17 12 12 7 17"/></svg>'
+    +     '</button>'
+    +     '<button class="btn-icon" title="Send to bottom" onclick="sendToPosition(\'type\',' + item.id + ',\'bottom\')">'
+    +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="7 13 12 18 17 13"/><polyline points="7 7 12 12 17 7"/></svg>'
+    +     '</button>'
     +     '<button class="btn-icon danger" title="Delete from template" onclick="deleteItem(\'type\',' + item.id + ',null,\'' + kind + '\')">'
     +       '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>'
     +     '</button>'
