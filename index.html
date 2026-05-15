@@ -510,16 +510,25 @@ const SB_URL  = 'https://dqzbekoaysgaiqljueac.supabase.co';
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRxemJla29heXNnYWlxbGp1ZWFjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxNzA5NzgsImV4cCI6MjA5MDc0Njk3OH0.cCdGxZ4zEFzU_r6lWSDeoNWG67Q4MSYCAtpds035dfU';
 const SCHEMA = 'preshot';
 
+/* v0.6 (2026-05-15): Writes are now gated behind a URL ?key=<service_role>
+   JWT. All preshot.* tables have RLS on; anon has SELECT only, service_role
+   has ALL. Without ?key= in the URL the app loads in a "locked" state
+   showing a single message — no list is rendered. This matches BreakOut's
+   admin gating pattern. Bookmark the URL with ?key=... appended. */
+const URL_PARAMS = new URLSearchParams(location.search);
+const SB_KEY     = URL_PARAMS.get('key') || '';
+const HAS_KEY    = !!SB_KEY;
+
 const HEADERS_READ = {
   apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON,
   'Accept-Profile': SCHEMA
 };
-const HEADERS_WRITE = {
-  apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON,
+const HEADERS_WRITE = HAS_KEY ? {
+  apikey: SB_KEY, Authorization: 'Bearer ' + SB_KEY,
   'Content-Type': 'application/json',
   'Accept-Profile': SCHEMA, 'Content-Profile': SCHEMA,
   Prefer: 'return=representation'
-};
+} : null;
 const HEADERS_APA = {
   apikey: SB_ANON, Authorization: 'Bearer ' + SB_ANON,
   'Accept-Profile': 'apa_core'
@@ -623,6 +632,9 @@ function pollForDeploy(target) {
    SUPABASE
    ════════════════════════════════════════════════════════════════════════ */
 async function sb(method, path, body, extra) {
+  if (method !== 'GET' && !HEADERS_WRITE) {
+    throw new Error('Write blocked: append ?key=<service_role> to the URL.');
+  }
   const opts = { method, headers: method === 'GET' ? { ...HEADERS_READ } : { ...HEADERS_WRITE } };
   if (extra) opts.headers = { ...opts.headers, ...extra };
   if (body !== undefined) opts.body = JSON.stringify(body);
@@ -2005,6 +2017,12 @@ async function init() {
   document.title = APP_NAME;
   checkVersion();
   setInterval(checkVersion, 30000);
+  if (!HAS_KEY) {
+    document.getElementById('viewRoot').innerHTML =
+      '<div class="empty"><div class="empty-title">Access required</div>'
+      + '<div class="empty-msg">Append <code>?key=&lt;service_role&gt;</code> to the URL to enter.</div></div>';
+    return;
+  }
   try {
     await loadAll();
   } catch (e) {
