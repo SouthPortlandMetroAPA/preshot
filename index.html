@@ -732,9 +732,25 @@ async function render() {
 /* ════════════════════════════════════════════════════════════════════════
    COMPLETION / PROGRESS HELPERS
    ════════════════════════════════════════════════════════════════════════ */
+/* v0.7 fix: sort BOTH lists by position at render time, with id as tie-
+   breaker. The source arrays' order is no longer trusted — sendToPosition
+   and drag-end mutate `position` fields on the objects but the source
+   arrays' element order is incidental. Without this sort, "send to top"
+   appears to do nothing until the next 15s sync re-fetches with
+   order=position.asc. (Intermittency = appears to work right after load
+   because PostgREST returned position-sorted; breaks after first reorder.)
+   Modern derived-state rule: deriving from local state must include the
+   ordering invariant — never inherit it from the source array. */
+function _byPositionThenId(a, b) {
+  return (a.position - b.position) || (a.id - b.id);
+}
 function instanceItemsForList(instance, listKind) {
-  const tItems = (_typeItemsByType.get(instance.type_id) || []).filter(i => i.list_kind === listKind);
-  const iItems = (_instanceItemsByInstance.get(instance.id) || []).filter(i => i.list_kind === listKind);
+  const tItems = (_typeItemsByType.get(instance.type_id) || [])
+    .filter(i => i.list_kind === listKind)
+    .sort(_byPositionThenId);
+  const iItems = (_instanceItemsByInstance.get(instance.id) || [])
+    .filter(i => i.list_kind === listKind)
+    .sort(_byPositionThenId);
   // Type items first (in their position order), then instance one-offs (in their position order).
   return [
     ...tItems.map(i => ({ ...i, _origin: 'type' })),
@@ -1110,7 +1126,7 @@ async function sendToPosition(origin, itemId, target) {
   }
   if (peers.length <= 1) return;
 
-  peers.sort((a, b) => a.position - b.position);
+  peers.sort(_byPositionThenId);
   const idx = peers.findIndex(x => x.id === itemId);
   if (idx < 0) return;
   // Already at the target end? Nothing to do.
@@ -1121,13 +1137,11 @@ async function sendToPosition(origin, itemId, target) {
   if (target === 'top') peers.unshift(moved);
   else peers.push(moved);
 
-  // Renumber positions starting at 1.
+  // Renumber positions starting at 1 — mutates the underlying objects, so
+  // _typeItemsByType / _instanceItemsByInstance sees the new positions
+  // immediately (peers is a filter copy holding the same object refs).
   const updates = peers.map((p, i) => ({ id: p.id, position: i + 1 }));
-  // Apply locally first so the re-render shows the new order immediately.
-  for (const u of updates) {
-    const p = peers.find(x => x.id === u.id);
-    if (p) p.position = u.position;
-  }
+  peers.forEach((p, i) => { p.position = i + 1; });
   rerenderActive();
 
   try {
@@ -1431,7 +1445,7 @@ function renderTypeEdit(root, typeId) {
 }
 function typePaneHtml(t, kind, title) {
   const items = (_typeItemsByType.get(t.id) || []).filter(i => i.list_kind === kind)
-                  .sort((a, b) => a.position - b.position);
+                  .sort(_byPositionThenId);
   const itemsHtml = items.length
     ? items.map(it => typeItemHtml(t.id, kind, it)).join('')
     : '<div class="empty-list">Nothing here yet.<br>Type below to add the first item.</div>';
